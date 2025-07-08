@@ -266,3 +266,214 @@ int main(int argc, char **argv, char **envp)
 }
 
 ```
+前置步骤不变：
+strings看desired_output，写到data.txt里，然后开始编写脚本解析data.txt
+但是，到了构造remain_directives时候，一开始认为remain_directives这里没有校验。于是采用下面这段代码生成image.cimg
+```c++
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+#include <assert.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <sys/signal.h>
+#include <sys/mman.h>
+#include <sys/ioctl.h>
+#include <sys/sendfile.h>
+#include <sys/prctl.h>
+#include <sys/personality.h>
+#include <arpa/inet.h>
+#include<fstream>
+#include<string>
+#include<iostream>
+using namespace std;
+void __attribute__ ((constructor)) disable_buffering()
+{
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 1);
+}
+char desired_output[] = "\x1b[38;2;049;196;198mc\x1b[0m\x1b[38;2;092;167;123mI\x1b[0m\x1b[38;2;089;007;016mM\x1b[0m\x1b[38;2;244;063;016mG\x1b[0m\x00";
+struct header_context{
+    char magic_number[4];
+    uint16_t version;
+    uint8_t width;
+    uint8_t height;
+}__attribute__((packed));
+typedef struct header_context CimgHead;
+
+struct pixel_t{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t ascii;
+};
+typedef struct pixel_t PixColor;
+typedef struct cimg CimgData;
+void Assign(PixColor* p,uint8_t r,uint8_t g,uint8_t b,uint8_t ascii){
+    (*p).ascii=ascii;
+    (*p).r=r;
+    (*p).g=g;
+    (*p).b=b;
+}
+PixColor colors[1365];
+void LoadColorInfo(){
+    std::ifstream file("data.txt");
+    string line;
+    int R,G,B;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t ascii;
+    int idx=0;
+    while(getline(file,line)){
+        sscanf(line.c_str(),"[38;2;%d;%d;%dm%c",&R,&G,&B,&ascii);
+        r=R;
+        g=G;
+        b=B;
+        //printf("%d;%d;%d;%d\n",r,g,b,ascii);
+        Assign(colors+idx,r,g,b,ascii);
+        idx+=1;
+    }
+    file.close();
+}
+int main(){
+    char magicNum[4];
+    magicNum[0]='c';
+    magicNum[1]='I';
+    magicNum[2]='M';
+    magicNum[3]='G';
+    uint16_t version=3;
+    uint8_t width=15;
+    uint8_t height=91;
+    uint32_t directive=13262;
+    uint16_t directiveCode=13262;
+    FILE* fp=fopen("image.cimg","wb");
+    fwrite(&magicNum,sizeof(magicNum),1,fp);
+    fwrite(&version,sizeof(version),1,fp);
+    fwrite(&width,sizeof(width),1,fp);
+    fwrite(&height,sizeof(height),1,fp);
+    fwrite(&directive,sizeof(directive),1,fp);
+    fwrite(&directiveCode,sizeof(directiveCode),1,fp);
+    LoadColorInfo();
+    for(int x=0;x<width*height;x++){
+        fwrite(&colors[x],sizeof(colors[x]),1,fp);
+    }
+    fclose(fp);
+}
+
+```
+但是过不了，后来绝望中随便把directive改成1，如下，就过了
+```c++
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+#include <assert.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <sys/signal.h>
+#include <sys/mman.h>
+#include <sys/ioctl.h>
+#include <sys/sendfile.h>
+#include <sys/prctl.h>
+#include <sys/personality.h>
+#include <arpa/inet.h>
+#include<fstream>
+#include<string>
+#include<iostream>
+using namespace std;
+void __attribute__ ((constructor)) disable_buffering()
+{
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 1);
+}
+char desired_output[] = "\x1b[38;2;049;196;198mc\x1b[0m\x1b[38;2;092;167;123mI\x1b[0m\x1b[38;2;089;007;016mM\x1b[0m\x1b[38;2;244;063;016mG\x1b[0m\x00";
+struct header_context{
+    char magic_number[4];
+    uint16_t version;
+    uint8_t width;
+    uint8_t height;
+}__attribute__((packed));
+typedef struct header_context CimgHead;
+
+struct pixel_t{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t ascii;
+};
+typedef struct pixel_t PixColor;
+typedef struct cimg CimgData;
+void Assign(PixColor* p,uint8_t r,uint8_t g,uint8_t b,uint8_t ascii){
+    (*p).ascii=ascii;
+    (*p).r=r;
+    (*p).g=g;
+    (*p).b=b;
+}
+PixColor colors[1365];
+void LoadColorInfo(){
+    std::ifstream file("data.txt");
+    string line;
+    int R,G,B;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t ascii;
+    int idx=0;
+    while(getline(file,line)){
+        sscanf(line.c_str(),"[38;2;%d;%d;%dm%c",&R,&G,&B,&ascii);
+        r=R;
+        g=G;
+        b=B;
+        //printf("%d;%d;%d;%d\n",r,g,b,ascii);
+        Assign(colors+idx,r,g,b,ascii);
+        idx+=1;
+    }
+    file.close();
+}
+int main(){
+    char magicNum[4];
+    magicNum[0]='c';
+    magicNum[1]='I';
+    magicNum[2]='M';
+    magicNum[3]='G';
+    uint16_t version=3;
+    uint8_t width=15;
+    uint8_t height=91;
+    uint32_t directive=1;
+    uint16_t directiveCode=13262;
+    FILE* fp=fopen("image.cimg","wb");
+    fwrite(&magicNum,sizeof(magicNum),1,fp);
+    fwrite(&version,sizeof(version),1,fp);
+    fwrite(&width,sizeof(width),1,fp);
+    fwrite(&height,sizeof(height),1,fp);
+    fwrite(&directive,sizeof(directive),1,fp);
+    fwrite(&directiveCode,sizeof(directiveCode),1,fp);
+    LoadColorInfo();
+    for(int x=0;x<width*height;x++){
+        fwrite(&colors[x],sizeof(colors[x]),1,fp);
+    }
+    fclose(fp);
+}
+
+```
+不懂为什么对remain_directives有校验，按照源码审计来看能否执行handle_13626只和directive_code有关，等大佬解答
