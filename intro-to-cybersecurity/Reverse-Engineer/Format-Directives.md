@@ -268,6 +268,7 @@ int main(int argc, char **argv, char **envp)
 ```
 前置步骤不变：
 strings看desired_output，写到data.txt里，然后开始编写脚本解析data.txt
+
 但是，到了构造remain_directives时候，一开始认为remain_directives这里没有校验。于是采用下面这段代码生成image.cimg
 ```c++
 
