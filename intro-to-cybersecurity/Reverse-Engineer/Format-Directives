@@ -1,4 +1,5 @@
 题目源码：
+'''
 #define _GNU_SOURCE 1
 
 #include <stdlib.h>
@@ -262,3 +263,4 @@ int main(int argc, char **argv, char **envp)
     if (won) win();
 
 }
+'''
